@@ -21,33 +21,80 @@ document.body.appendChild(floatingBox);
 async function updateSelectedText() {
   let selectedText = window.getSelection().toString().trim();
   if (selectedText) {
-    floatingBox.innerText = selectedText;
-    console.log("hello");
-    // Fetch content from the selected URL
-    let summary = await fetchUrlContent(selectedText);
-    console.log(summary);
-        if (summary) {
-            floatingBox.innerText = `${selectedText}\n\nSummary: ${summary}`;
-        } else {
-            floatingBox.innerText = selectedText;
+    floatingBox.innerText = 'Welcome To Soch Facts\n\nValidate AI thoughts here.....';
+    let pairs = await isURLPresent(selectedText);
+    let resultText = "";
+
+// Loop through the URL-score pairs
+    pairs.forEach(pair => {
+        const { url, score } = pair;
+        if (score==null){
+          resultText += `${url} -\n Invalid URL\n`;
         }
+        else{
+          const scorePercentage = parseFloat(score) * 100;
+          resultText += `${url} - Only\n${scorePercentage.toFixed(2)}% related to context\n`;
+        }
+        
+        // Check if the score is valid (you can define your own criteria)
+        // if (score < 0.5) {
+            
+        // } else {
+        //     resultText += `${url} \n ${scorePercentage.toFixed(2)}%\n`;
+        // }
+    });
+
+    console.log("hello");
+    floatingBox.innerText = resultText;
+    // Fetch content from the selected URL
+    // let summary = await fetchUrlContent(selectedText);
+    // console.log(summary);
+    //     if (summary) {
+    //         floatingBox.innerText = `${selectedText}\n\nSummary: ${summary}`;
+    //     } else {
+    //         floatingBox.innerText = selectedText;
+    //     }
     // floatingBox.innerText = content ? `Content: ${content.substring(0, 200)}...` : 'Failed to retrieve content.';
   } else {
-    floatingBox.innerText = 'No text selected';
+    floatingBox.innerText = 'Welcome To Soch Facts\n\nValidate AI thoughts here.....';
   }
 
 }
 
 // Function to fetch content from a URL
-async function fetchUrlContent(url) {
+// async function fetchUrlContent(url) {
+//   try {
+//     let paragraph = "The war between china and africa is leading."
+//       const response = await fetch('http://localhost:5000/api/fetch-url', {
+//           method: 'POST',
+//           headers: {
+//               'Content-Type': 'application/json',
+//           },
+//           body: JSON.stringify({  paragraph, url })  // Send the URL as JSON
+//       });
+
+//       // Check if the response is ok (status code 200-299)
+//       if (!response.ok) {
+//           throw new Error(`HTTP error! status: ${response.status}`);
+//       }
+
+//       const data = await response.json();
+//       print(data)  
+//       return data.valid ? data.summary : null; // Return summary if valid
+//   } catch (error) {
+//       console.error('Error fetching the URL:', error);
+//       return null; 
+//   }
+// }
+async function isURLPresent(text) {
   try {
-    let paragraph = "The war between china and africa is leading."
-      const response = await fetch('http://localhost:5000/api/fetch-url', {
+    
+      const response = await fetch('http://localhost:5000/api/check-url', {
           method: 'POST',
           headers: {
               'Content-Type': 'application/json',
           },
-          body: JSON.stringify({  paragraph, url })  // Send the URL as JSON
+          body: JSON.stringify({  text })  // Send the URL as JSON
       });
 
       // Check if the response is ok (status code 200-299)
@@ -57,11 +104,12 @@ async function fetchUrlContent(url) {
 
       const data = await response.json();
       print(data)  
-      return data.valid ? data.summary : null; // Return summary if valid
+      return data.invalid_urls;
   } catch (error) {
-      console.error('Error fetching the URL:', error);
+      console.error('Error fetching the URLs:', error);
       return null; 
   }
+  
 }
 // Listen for text selection changes
 document.addEventListener('mouseup', updateSelectedText);

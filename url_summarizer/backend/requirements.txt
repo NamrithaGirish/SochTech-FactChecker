@@ -5,3 +5,4 @@ beautifulsoup4
 torch
 scikit-learn
 sentence-transformers
+regex

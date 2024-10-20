@@ -18,55 +18,100 @@ floatingBox.innerText = 'No text selected';
 document.body.appendChild(floatingBox);
 
 // Function to update the box with selected text
+// Function to update the box with selected text
+// Function to update the box with selected text
 async function updateSelectedText() {
   let selectedText = window.getSelection().toString().trim();
   if (selectedText) {
-    floatingBox.innerText = 'Welcome To Soch Facts\n\nValidate AI thoughts here.....';
-    let [pairs,citations] = await isURLPresent(selectedText);
-    let citationsString = citations.join('\n');
-    // let citations = findata.citations;
-    let resultText = "";
+      floatingBox.innerText = 'Validating...';
+      
+      // Fetch claim validation from the Flask API
+      const validationResult = await fetchClaimValidation(selectedText);
+      console.log(validationResult);
+      if (validationResult) {
+          let resultText = '';
+          const { valid, support_prob, invalid_urls, citations } = validationResult;
 
-// Loop through the URL-score pairs
-    pairs.forEach(pair => {
-        const { url, score } = pair;
-        if (score==null){
-          resultText += `${url} -\n Invalid URL\n\n`;
-        }
-        else{
-          const scorePercentage = parseFloat(score) * 100;
-          resultText += `${url} - ${scorePercentage.toFixed(2)}% related to context\n\n`;
-        }
-        
-        // Check if the score is valid (you can define your own criteria)
-        // if (score < 0.5) {
-            
-        // } else {
-        //     resultText += `${url} \n ${scorePercentage.toFixed(2)}%\n`;
-        // }
-    });
-    resultText+="\n\nCitations\n";
-    resultText+=citationsString;
-  //   for (let i = 0; i < citations.length; i++) {
-  //     resultText+=`${citations[i]}\n`;
-  // }
+          // Display support probability
+          resultText += `Support Probability: ${(support_prob * 100).toFixed(2)}%\n\n`;
 
+          // Process invalid URLs
+          if (invalid_urls && invalid_urls.length > 0) {
+              invalid_urls.forEach(({ url, score }) => {
+                  resultText += `${url} - ${score === null ? 'Invalid URL' : `Only ${(parseFloat(score) * 100).toFixed(2)}% related to context`}\n`;
+              });
+          } else {
+              resultText += 'No invalid URLs found.\n';
+          }
 
-    console.log("hello");
-    floatingBox.innerText = resultText;
-    // Fetch content from the selected URL
-    // let summary = await fetchUrlContent(selectedText);
-    // console.log(summary);
-    //     if (summary) {
-    //         floatingBox.innerText = `${selectedText}\n\nSummary: ${summary}`;
-    //     } else {
-    //         floatingBox.innerText = selectedText;
-    //     }
-    // floatingBox.innerText = content ? `Content: ${content.substring(0, 200)}...` : 'Failed to retrieve content.';
+          // Process citations
+          if (citations && citations.length > 0) {
+              resultText += `Citations:\n`;
+              citations.forEach(citation => {
+                  resultText += `${citation}\n`;
+              });
+          } else {
+              resultText += 'No citations found.\n';
+          }
+
+          floatingBox.innerText = resultText;
+      } else {
+          floatingBox.innerText = 'No validation result received.';
+      }
   } else {
-    floatingBox.innerText = 'Welcome To Soch Facts\n\nValidate AI thoughts here.....';
+      floatingBox.innerText = 'Welcome To Soch Facts\n\nValidate AI thoughts here.....';
   }
 }
+
+
+// Function to fetch content from the URL and get the score, support probability, and citations
+// async function isURLPresent(text) {
+//   try {
+//       const response = await fetch('http://localhost:5000/api/check-url', {
+//           method: 'POST',
+//           headers: {
+//               'Content-Type': 'application/json',
+//           },
+//           body: JSON.stringify({ text })  // Send the text for processing
+//       });
+
+//       const data = await response.json();
+//       return data.invalid_urls;
+//   } catch (error) {
+//       console.error('Error fetching the URLs:', error);
+//       return [];
+//   }
+// }
+
+
+
+
+// Function to fetch claim validation from the Flask API
+async function fetchClaimValidation(text) {
+  try {
+      const response = await fetch('http://localhost:5000/api/check-url', {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ text })  // Send the selected text (context + claim)
+      });
+
+      if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;  // Return the API's response (validity, message, support_prob, etc.)
+  } catch (error) {
+      console.error('Error validating the claim:', error);
+      return null;
+  }
+}
+
+// Listen for text selection changes
+
+
 
 // Function to fetch content from a URL
 // async function fetchUrlContent(url) {

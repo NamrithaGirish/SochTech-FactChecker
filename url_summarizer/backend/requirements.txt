@@ -6,3 +6,4 @@ torch
 scikit-learn
 sentence-transformers
 regex
+bespokelabs

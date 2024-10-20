@@ -52,6 +52,36 @@ def split_input(input_string):
     return context, claim
 
 
+def get_google_search_results(query):
+    url = f"https://www.google.com/search?q={query}"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.6422.176 Safari/537.36"
+    }
+    response = requests.get(url, headers=headers)
+    soup = BeautifulSoup(response.text, 'html.parser')
+    
+    # Extract search result links (you may need to adjust this selector)
+    links = soup.find_all('a')
+    urls = []
+    mu=0
+    for link in links:
+        href = link.get('href')
+        # print("0000",href)
+        if href and href.startswith("http") and 'google' not in href:
+            mu+=1
+            urls.append(href)
+            if mu==10:
+                break
+        # try:
+        #     if href and 'url?q=' in href:
+        #         # Clean the URL
+        #         cleaned_url = href.split('url?q=')[1].split('&')[0]
+        #         urls.append(cleaned_url)
+        #         print("//////",cleaned_url)
+        # except Exception as e:
+        #     print(e)
+    
+    return urls
 
 
 
@@ -80,6 +110,33 @@ def split_input(input_string):
         
 #     except requests.exceptions.RequestException as e:
 #         return jsonify({'valid': False, 'message': str(e)}), 400
+def scrape_url(url):
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Check for HTTP errors
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # Extract data as needed (customize this part)
+        data = soup.find_all(['h1']) # Example: finding all <h1> tags
+        result=""
+        c=0
+        for item in data:
+            c=0
+            if item.get_text():
+                c+=1
+                result+=item.get_text()
+                if c==3:
+                    break
+            # print(f"Data from {url}: {item.get_text()}\n")
+        # print(result)
+        return result
+    except requests.exceptions.RequestException as e:
+        print(f"Error scraping {url}: {e}")
+
+def perform_source_search(text):
+    urls  = get_google_search_results(text)
+    return urls
+
 
 @app.route('/api/check-url', methods=['POST'])
 def fetch_url():
@@ -104,17 +161,33 @@ def fetch_url():
         # Log the separated context and claim
         print("Context:", context)
         print("Claim:", claim)
-
+        query = context
+        result_urls = get_google_search_results(query)
+        contextnew=""
+        print("Final urls : ",result_urls)
+        hm=0
+        for rurl in result_urls:
+            # print("hello")
+            contentofurl=scrape_url(rurl)
+            if contentofurl:
+                hm+=1
+                contextnew+=contentofurl
+                if hm==10:
+                    break
+        print("New context : ",contextnew)
         # Call Bespoke API for fact-checking
-        factcheck_response = bl.minicheck.factcheck.create(claim=claim, context=context)
+        factcheck_response = bl.minicheck.factcheck.create(claim=claim, context=contextnew) #chnge to old contxt if needed
         support_prob = factcheck_response.support_prob
-
+        citations = perform_source_search(claim)
+        
+        print("citations : ",citations)
         # Return the result based on the support probability
         if support_prob > 0.5:  # Threshold for validity
-            print("supportedx")
+
+            print("supported")
             # return jsonify({'valid': True, 'summary': "Claim is supported by the context."})
         else:
-            print("unsupportedx")
+            print("unsupported")
             
             # return jsonify({'valid': False, 'summary': "Claim is not supported by the context."})
     except Exception as e:

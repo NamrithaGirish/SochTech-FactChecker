@@ -23,6 +23,7 @@ async function updateSelectedText() {
   if (selectedText) {
     floatingBox.innerText = 'Welcome To Soch Facts\n\nValidate AI thoughts here.....';
     let pairs = await isURLPresent(selectedText);
+    // let citations = findata.citations;
     let resultText = "";
 
 // Loop through the URL-score pairs
@@ -43,6 +44,11 @@ async function updateSelectedText() {
         //     resultText += `${url} \n ${scorePercentage.toFixed(2)}%\n`;
         // }
     });
+  //   resultText+="\n\nCitations\n";
+  //   for (let i = 0; i < citations.length; i++) {
+  //     resultText+=`${citations[i]}\n`;
+  // }
+
 
     console.log("hello");
     floatingBox.innerText = resultText;
@@ -106,7 +112,7 @@ async function isURLPresent(text) {
     // });
 
       const data = await response.json();
-      print(data)  
+      // print(data)  
       return data.invalid_urls;
   } catch (error) {
       console.error('Error fetching the URLs:', error);
@@ -119,3 +125,14 @@ async function isURLPresent(text) {
 // Listen for text selection changes
 document.addEventListener('mouseup', updateSelectedText);
 document.addEventListener('keyup', updateSelectedText);
+// chrome.commands.onCommand.addListener((command) => {
+//   if (command === "open_extension") {
+//     // Open the content script functionality or popup
+//     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+//       chrome.scripting.executeScript({
+//         target: { tabId: tabs[0].id },
+//         function: openContentReader,
+//       });
+//     });
+//   }
+// });

@@ -14,5 +14,13 @@
       "js": ["content.js"],
       "css": ["style.css"]
     }
-  ]
+  ],
+  "commands": {
+    "open_extension": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Y"  
+      },
+      "description": "Open webpage content reader"
+    }
   }
+}

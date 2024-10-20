@@ -42,7 +42,7 @@ async function updateSelectedText() {
       console.log(validationResult);
       if (validationResult) {
           let resultText = '';
-          const { valid, support_prob, invalid_urls, citations } = validationResult;
+          const { valid, support_prob, invalid_urls, citations, invalid_lines } = validationResult;
 
           // Display support probability
           resultText += `Support Probability: ${(support_prob * 100).toFixed(2)}%\n\n`;
@@ -64,6 +64,15 @@ async function updateSelectedText() {
               });
           } else {
               resultText += 'No citations found.\n';
+          }
+
+          if (invalid_lines && invalid_lines.length > 0) {
+              resultText += `\nInvalid Lines:\n`;
+              invalid_lines.forEach(({ line, similarity_score }) => {
+                  resultText += `${line} - Similarity Score: ${(similarity_score * 100).toFixed(2)}%\n`;
+              });
+          } else {
+              resultText += 'No invalid lines found.\n';
           }
 
           floatingBox.innerText = resultText;

@@ -22,7 +22,8 @@ async function updateSelectedText() {
   let selectedText = window.getSelection().toString().trim();
   if (selectedText) {
     floatingBox.innerText = 'Welcome To Soch Facts\n\nValidate AI thoughts here.....';
-    let pairs = await isURLPresent(selectedText);
+    let [pairs,citations] = await isURLPresent(selectedText);
+    let citationsString = citations.join('\n');
     // let citations = findata.citations;
     let resultText = "";
 
@@ -30,11 +31,11 @@ async function updateSelectedText() {
     pairs.forEach(pair => {
         const { url, score } = pair;
         if (score==null){
-          resultText += `${url} -\n Invalid URL\n`;
+          resultText += `${url} -\n Invalid URL\n\n`;
         }
         else{
           const scorePercentage = parseFloat(score) * 100;
-          resultText += `${url} - Only\n${scorePercentage.toFixed(2)}% related to context\n`;
+          resultText += `${url} - ${scorePercentage.toFixed(2)}% related to context\n\n`;
         }
         
         // Check if the score is valid (you can define your own criteria)
@@ -44,7 +45,8 @@ async function updateSelectedText() {
         //     resultText += `${url} \n ${scorePercentage.toFixed(2)}%\n`;
         // }
     });
-  //   resultText+="\n\nCitations\n";
+    resultText+="\n\nCitations\n";
+    resultText+=citationsString;
   //   for (let i = 0; i < citations.length; i++) {
   //     resultText+=`${citations[i]}\n`;
   // }
@@ -112,8 +114,9 @@ async function isURLPresent(text) {
     // });
 
       const data = await response.json();
+      console.log(data.citation);
       // print(data)  
-      return data.invalid_urls;
+      return [data.invalid_urls,data.citation];
   } catch (error) {
       console.error('Error fetching the URLs:', error);
       return null; 

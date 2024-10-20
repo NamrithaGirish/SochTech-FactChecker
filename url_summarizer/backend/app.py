@@ -162,6 +162,7 @@ def fetch_url():
         print("Context:", context)
         print("Claim:", claim)
         query = context
+        result_urls=[]
         result_urls = get_google_search_results(query)
         contextnew=""
         print("Final urls : ",result_urls)
@@ -233,11 +234,11 @@ def fetch_url():
                     invalid_urls.append({'url':part['url'],'score':None})
                     print(e)
         print(invalid_urls)
-        return {'invalid_urls': invalid_urls}
+        return {'invalid_urls': invalid_urls,'citation':citations}
 
         
     except requests.exceptions.RequestException as e:
-        return {'invalid_urls': 'Failed'}, 400
+        return {'invalid_urls': 'Failed','citation':citations}, 400
 
 
 

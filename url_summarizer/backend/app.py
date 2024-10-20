@@ -52,36 +52,26 @@ def split_input(input_string):
     return context, claim
 
 
-def get_google_search_results(query):
+def get_google_search_results(query, max_retries=3):
     url = f"https://www.google.com/search?q={query}"
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.6422.176 Safari/537.36"
     }
-    response = requests.get(url, headers=headers)
-    soup = BeautifulSoup(response.text, 'html.parser')
     
-    # Extract search result links (you may need to adjust this selector)
-    links = soup.find_all('a')
-    urls = []
-    mu=0
-    for link in links:
-        href = link.get('href')
-        # print("0000",href)
-        if href and href.startswith("http") and 'google' not in href:
-            mu+=1
-            urls.append(href)
-            if mu==10:
-                break
-        # try:
-        #     if href and 'url?q=' in href:
-        #         # Clean the URL
-        #         cleaned_url = href.split('url?q=')[1].split('&')[0]
-        #         urls.append(cleaned_url)
-        #         print("//////",cleaned_url)
-        # except Exception as e:
-        #     print(e)
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()  # Check for HTTP errors
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            links = soup.find_all('a')
+            urls = [link.get('href') for link in links if link.get('href') and link.get('href').startswith('http') and 'google' not in link.get('href')]
+            return urls[:10]  # Return only the first 10 URLs
+        except requests.exceptions.RequestException as e:
+            print(f"Attempt {attempt + 1} failed: {e}")
+            time.sleep(2)  # Wait for 2 seconds before retrying
     
-    return urls
+    return []  # Return an empty list if all attempts fail
 
 
 
@@ -110,28 +100,34 @@ def get_google_search_results(query):
         
 #     except requests.exceptions.RequestException as e:
 #         return jsonify({'valid': False, 'message': str(e)}), 400
-def scrape_url(url):
+def scrape_url(url, max_paragraphs=1, max_chars=500):
     try:
         response = requests.get(url)
         response.raise_for_status()  # Check for HTTP errors
         soup = BeautifulSoup(response.content, 'html.parser')
         
-        # Extract data as needed (customize this part)
-        data = soup.find_all(['h1']) # Example: finding all <h1> tags
-        result=""
-        c=0
-        for item in data:
-            c=0
-            if item.get_text():
-                c+=1
-                result+=item.get_text()
-                if c==3:
-                    break
-            # print(f"Data from {url}: {item.get_text()}\n")
-        # print(result)
-        return result
+        # Extract the first few paragraphs ('p' tags)
+        paragraphs = soup.find_all('p')
+        result = ""
+        paragraph_count = 0
+        char_count = 0
+
+        for para in paragraphs:
+            text = para.get_text(strip=True)
+            
+            if text:
+                # Accumulate text until reaching the max number of paragraphs or characters
+                result += text + "\n\n"
+                paragraph_count += 1
+                char_count += len(text)
+
+                # if paragraph_count >= max_paragraphs or char_count >= max_chars:
+                #     break
+
+        return result.strip()  # Return the extracted content
     except requests.exceptions.RequestException as e:
         print(f"Error scraping {url}: {e}")
+        return None
 
 def perform_source_search(text):
     urls  = get_google_search_results(text)
@@ -141,63 +137,49 @@ def perform_source_search(text):
 @app.route('/api/check-url', methods=['POST'])
 def fetch_url():
     data = request.get_json()
-    text = data.get('text')
-    invalid_urls=[]
+    invalid_urls = []
+    citations = []
+    support_prob = 0.0  # Initialize support probability
     try:
-        data = request.get_json()
-        # Log the received data
-        print("Received data:", data)
-
-        url = data.get('text')  # This should contain both the context and claim
-        if not url:
+        text = data.get('text')  # Get the text from the request
+        if not text:
             return jsonify({'valid': False, 'message': 'Invalid input. URL is required.'}), 400
 
         # Split the input into context and claim
         try:
-            context, claim = split_input(url)
+            context, claim = split_input(text)
         except ValueError as e:
             return jsonify({'valid': False, 'message': str(e)}), 400
 
-        # Log the separated context and claim
-        print("Context:", context)
-        print("Claim:", claim)
-        query = context
-        result_urls = get_google_search_results(query)
-        contextnew=""
-        print("Final urls : ",result_urls)
-        hm=0
+        # Perform Google search and scrape content
+        result_urls = get_google_search_results(context)
+        context_new = ""
         for rurl in result_urls:
-            # print("hello")
-            contentofurl=scrape_url(rurl)
-            if contentofurl:
-                hm+=1
-                contextnew+=contentofurl
-                if hm==10:
-                    break
-        print("New context : ",contextnew)
-        # Call Bespoke API for fact-checking
-        factcheck_response = bl.minicheck.factcheck.create(claim=claim, context=contextnew) #chnge to old contxt if needed
-        support_prob = factcheck_response.support_prob
-        citations = perform_source_search(claim)
+            content_of_url = scrape_url(rurl)
+            if content_of_url:
+                context_new += content_of_url + " "
         
-        print("citations : ",citations)
-        # Return the result based on the support probability
-        if support_prob > 0.5:  # Threshold for validity
+        print("\nNew Context:",context_new)
+        # Call Bespoke API for fact-checking
+        factcheck_response = bl.minicheck.factcheck.create(claim=claim, context=context_new)
+        support_prob = factcheck_response.support_prob
+        
+        citations = perform_source_search(claim)  # Get citations
+        
+        # Check if claim is supported
+        # if support_prob > 0.5:
+        #     return jsonify({'valid': True, 'support_prob': support_prob, 'invalid_urls': invalid_urls, 'citations': citations})
+        # else:
+        #     return jsonify({'valid': False, 'support_prob': support_prob, 'invalid_urls': invalid_urls, 'citations': citations})
 
-            print("supported")
-            # return jsonify({'valid': True, 'summary': "Claim is supported by the context."})
-        else:
-            print("unsupported")
-            
-            # return jsonify({'valid': False, 'summary': "Claim is not supported by the context."})
     except Exception as e:
-        # Log any exceptions
         print("Error occurred:", str(e))
         return jsonify({'valid': False, 'message': 'An error occurred: ' + str(e)}), 500
-    
 
     try:
-        url_pattern = r'(https?://\S+)'
+        # url_pattern = r'(https?://\S+)'
+        url_pattern = r"(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"
+
         # match = re.search(url_pattern, text)
         parts=[]
         last_index=0
@@ -233,12 +215,13 @@ def fetch_url():
                     invalid_urls.append({'url':part['url'],'score':None})
                     print(e)
         print(invalid_urls)
-        return {'invalid_urls': invalid_urls}
-
+        if support_prob > 0.5:
+            return jsonify({'valid': True, 'support_prob': support_prob, 'invalid_urls': invalid_urls, 'citations': citations})
+        else:
+            return jsonify({'valid': False, 'support_prob': support_prob, 'invalid_urls': invalid_urls, 'citations': citations})
         
     except requests.exceptions.RequestException as e:
-        return {'invalid_urls': 'Failed'}, 400
-
+        return {'invalid_urls': 'Failed','citation':citations}, 400
 
 
 

@@ -1,21 +1,33 @@
 // Create a floating box to display selected text
 let floatingBox = document.createElement('div');
 floatingBox.id = 'floatingTextBox';
-floatingBox.style.position = 'fixed';
-floatingBox.style.bottom = '20px';
-floatingBox.style.right = '20px';
-floatingBox.style.padding = '10px';
-floatingBox.style.backgroundColor = '#f0f0f0';
-floatingBox.style.border = '1px solid #ccc';
-floatingBox.style.borderRadius = '5px';
-floatingBox.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
-floatingBox.style.maxWidth = '300px';
-floatingBox.style.whiteSpace = 'pre-wrap';
-floatingBox.style.zIndex = '9999';
-floatingBox.innerText = 'No text selected';
+
+// Create and append the heading
+let heading = document.createElement('h2');
+heading.innerText = 'Soch Facts';
+floatingBox.appendChild(heading);
+
+// Add text content
+floatingBox.innerText += '\nNo text selected'; // Append to the heading
+
+// Create resize handle
+let resizeHandle = document.createElement('div');
+resizeHandle.id = 'resizeHandle';
+floatingBox.appendChild(resizeHandle);
 
 // Add the floating box to the webpage
 document.body.appendChild(floatingBox);
+document.addEventListener('click', function (event) {
+  if (!floatingBox.contains(event.target)) {
+      // Reset the content only if it is clicked outside
+      floatingBox.innerText = heading.innerText + '\nNo text selected';
+  }
+});
+
+// Prevent clicks inside the floating box from resetting content
+floatingBox.addEventListener('click', function(event) {
+  event.stopPropagation();
+});
 
 // Function to update the box with selected text
 // Function to update the box with selected text

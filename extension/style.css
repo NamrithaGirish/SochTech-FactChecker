@@ -1,6 +1,34 @@
 #floatingTextBox {
-    font-family: Arial, sans-serif;
-    font-size: 14px;
-    color: #333;
-  }
-  
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  color: #333;
+  background-color: #fff;
+  border: 1px solid #000; /* Black border */
+  border-radius: 5px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  max-width: 300px;
+  max-height: 300px; /* Set max height to allow for scrolling */
+  overflow-y: auto; /* Enable vertical scrolling */
+  white-space: pre-wrap;
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
+  padding: 10px;
+}
+
+#floatingTextBox h2 {
+  margin: 0 0 10px; /* Spacing below the heading */
+  font-size: 16px;
+  color: #000; /* Black heading */
+}
+
+#resizeHandle {
+  width: 10px; /* Width of the resize handle */
+  height: 10px; /* Height of the resize handle */
+  background-color: #000; /* Black color for the handle */
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  cursor: se-resize; /* Resize cursor */
+}

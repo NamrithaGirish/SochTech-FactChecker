@@ -7,12 +7,16 @@ from bs4 import BeautifulSoup
 from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
 import re
+from dotenv import load_dotenv
+from googlesearch import search
+
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
 
 # Initialize the Bespoke API client
-bl = BespokeLabs(auth_token=os.environ.get("BESPOKE_API_KEY"))
+bl = BespokeLabs(auth_token=os.getenv("BESPOKE_API_KEY"))
 
 model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
@@ -33,37 +37,49 @@ def split_input(input_string):
     parts = input_string.split("ChatGPT said:")
     if len(parts) < 2:
         raise ValueError("Input must contain 'ChatGPT said:' to separate context and claim.")
-    context = parts[0].strip()  
+    context = parts[0].strip()
+    print("Context:", context)  
     claim = parts[1].strip()
     if claim.startswith("ChatGPT\n"):
         claim = claim.replace("ChatGPT\n", "", 1).strip()
+    print("Claim:", claim)
     return context, claim
 
-def get_google_search_results(query, max_retries=3):
-    url = f"https://www.google.com/search?q={query}"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.6422.176 Safari/537.36"
-    }
-    
-    for attempt in range(max_retries):
-        try:
-            response = requests.get(url, headers=headers)
-            response.raise_for_status()  
-            soup = BeautifulSoup(response.text, 'html.parser')
-            links = soup.find_all('a')
-            urls = [link.get('href') for link in links if link.get('href') and link.get('href').startswith('http') and 'google' not in link.get('href')]
-            return urls[:10]  # Return only the first 10 URLs
-        except requests.exceptions.RequestException as e:
-            print(f"Attempt {attempt + 1} failed: {e}")
-    
-    return []  # Return an empty list if all attempts fail
+def get_google_search_results(query, max_retries=5):
 
-def scrape_url(url):
+    # url = f"https://www.google.com/search?q={query}"
+    # headers = {
+    #     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.6422.176 Safari/537.36"
+    # }
+    finresult = []
+    for result in search(query, num_results=10):
+        finresult.append(result)
+
+    # for attempt in range(max_retries):
+    #     try:
+    #         response = requests.get(url, headers=headers)
+    #         response.raise_for_status()  
+    #         soup = BeautifulSoup(response.text, 'html.parser')
+    #         links = soup.find_all('a')
+    #         print("Links found:", links)  # Debugging line
+    #         urls = [link.get('href') for link in links if link.get('href') and link.get('href').startswith('http') and 'google' not in link.get('href')]
+    #         print("URLs found:", urls)
+    #         return urls[:10]  # Return only the first 10 URLs
+    #     except requests.exceptions.RequestException as e:
+    #         print(f"Attempt {attempt + 1} failed: {e}")
+    
+    return finresult  # Return an empty list if all attempts fail
+
+def scrape_url(url):  # Replace with your target URL
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
     try:
-        response = requests.get(url)
+        response = requests.get(url,headers=headers)
         response.raise_for_status()  
         soup = BeautifulSoup(response.content, 'html.parser')
         paragraphs = soup.find_all('p')
+        print("Paragraphs found:", paragraphs)  # Debugging line
         result = ""
         for para in paragraphs:
             text = para.get_text(strip=True)
@@ -76,6 +92,7 @@ def scrape_url(url):
 
 def perform_source_search(text):
     urls = get_google_search_results(text)
+    print("URLS :",urls)
     return urls
 
 @app.route('/api/check-url', methods=['POST'])
@@ -86,6 +103,7 @@ def fetch_url():
     support_prob = 0.0  
     try:
         text = data.get('text')
+        print("INPUT :",text)
         if not text:
             return jsonify({'valid': False, 'message': 'Invalid input. URL is required.'}), 400
 

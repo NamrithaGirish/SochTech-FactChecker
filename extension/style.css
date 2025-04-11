@@ -1,34 +1,85 @@
 #floatingTextBox {
-  font-family: Arial, sans-serif;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Modern font */
   font-size: 14px;
-  color: #333;
-  background-color: #fff;
-  border: 1px solid #000; /* Black border */
-  border-radius: 5px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  max-width: 300px;
-  max-height: 300px; /* Set max height to allow for scrolling */
-  overflow-y: auto; /* Enable vertical scrolling */
+  color: #2e2e2e;
+  background-color: #f8f8f8; /* Light gray background */
+  border: 1px solid #ccc;       /* Lighter border */
+  border-radius: 8px;          /* Softer rounded corners */
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15); /* More pronounced shadow */
+  max-width: 350px;
+  max-height: 400px;
+  overflow-y: auto;
   white-space: pre-wrap;
   position: fixed;
   bottom: 20px;
   right: 20px;
   z-index: 9999;
-  padding: 10px;
+  padding: 15px;
+  opacity: 0.95;             /* Slight transparency */
+  transition: all 0.3s ease; /* Smooth transitions */
+}
+
+#floatingTextBox:hover {
+  opacity: 1.0;             /* Fully opaque on hover */
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2); /* Enhanced shadow on hover */
 }
 
 #floatingTextBox h2 {
-  margin: 0 0 10px; /* Spacing below the heading */
-  font-size: 16px;
-  color: #000; /* Black heading */
+  margin: 0 0 15px;
+  font-size: 18px;
+  font-weight: bold;       /* Bold heading */
+  color: #2c3e50;         /* Darker heading color */
+  border-bottom: 1px solid #eee; /* Light line under heading */
+  padding-bottom: 8px;
 }
 
 #resizeHandle {
-  width: 10px; /* Width of the resize handle */
-  height: 10px; /* Height of the resize handle */
-  background-color: #000; /* Black color for the handle */
+  width: 16px;
+  height: 16px;
+  background-color: #777;   /* Darker resize handle */
+  border: 2px solid #fff; /* White border for visibility */
   position: absolute;
-  right: 0;
-  bottom: 0;
-  cursor: se-resize; /* Resize cursor */
+  right: 2px;
+  bottom: 2px;
+  cursor: se-resize;
+  border-radius: 4px;      /* Rounded resize handle */
+  opacity: 0.7;
+  transition: opacity 0.3s ease;
+}
+
+#resizeHandle:hover {
+  opacity: 1.0;
+}
+
+/* Add styles for links within the box */
+#floatingTextBox a {
+  color: #007bff;
+  text-decoration: none;
+}
+
+#floatingTextBox a:hover {
+  text-decoration: underline;
+}
+
+/* Style for loading/validating state */
+#floatingTextBox .loading-text {
+  font-style: italic;
+  color: #888;
+}
+
+/* Style for result messages (e.g., "No invalid URLs") */
+#floatingTextBox .result-message {
+  margin-top: 10px;
+  color: #555;
+}
+
+/* Style for invalid lines */
+#floatingTextBox .invalid-line {
+  color: #d32f2f; /* Red color for invalid lines */
+  margin-bottom: 5px;
+}
+
+/* Style for citations */
+#floatingTextBox .citation {
+  margin-bottom: 5px;
 }

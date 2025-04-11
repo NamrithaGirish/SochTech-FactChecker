@@ -25,10 +25,13 @@ def extract_content(html_content):
     text_elements = soup.find_all(['p', 'h1', 'h2', 'h3', 'div', 'span', 'article'])
     text_content = ' '.join([element.get_text() for element in text_elements])
     if not text_content.strip():
-        return "No meaningful content found."  
+        return "No meaningful content found."
     return text_content.replace('\n', '')
 
 def compute_similarity(paragraph1, paragraph2):
+    # Normalize strings by replacing multiple newlines/spaces with single spaces
+    paragraph1 = re.sub(r'\s+', ' ', paragraph1).strip()
+    paragraph2 = re.sub(r'\s+', ' ', paragraph2).strip()
     embeddings = model.encode([paragraph1, paragraph2])
     similarity = cosine_similarity([embeddings[0]], [embeddings[1]])[0][0]
     return similarity
@@ -38,7 +41,7 @@ def split_input(input_string):
     if len(parts) < 2:
         raise ValueError("Input must contain 'ChatGPT said:' to separate context and claim.")
     context = parts[0].strip()
-    print("Context:", context)  
+    print("Context:", context)
     claim = parts[1].strip()
     if claim.startswith("ChatGPT\n"):
         claim = claim.replace("ChatGPT\n", "", 1).strip()
@@ -46,29 +49,10 @@ def split_input(input_string):
     return context, claim
 
 def get_google_search_results(query, max_retries=5):
-
-    # url = f"https://www.google.com/search?q={query}"
-    # headers = {
-    #     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.6422.176 Safari/537.36"
-    # }
     finresult = []
     for result in search(query, num_results=10):
         finresult.append(result)
-
-    # for attempt in range(max_retries):
-    #     try:
-    #         response = requests.get(url, headers=headers)
-    #         response.raise_for_status()  
-    #         soup = BeautifulSoup(response.text, 'html.parser')
-    #         links = soup.find_all('a')
-    #         print("Links found:", links)  # Debugging line
-    #         urls = [link.get('href') for link in links if link.get('href') and link.get('href').startswith('http') and 'google' not in link.get('href')]
-    #         print("URLs found:", urls)
-    #         return urls[:10]  # Return only the first 10 URLs
-    #     except requests.exceptions.RequestException as e:
-    #         print(f"Attempt {attempt + 1} failed: {e}")
-    
-    return finresult  # Return an empty list if all attempts fail
+    return finresult
 
 def scrape_url(url):  # Replace with your target URL
     headers = {
@@ -76,7 +60,7 @@ def scrape_url(url):  # Replace with your target URL
         }
     try:
         response = requests.get(url,headers=headers)
-        response.raise_for_status()  
+        response.raise_for_status()
         soup = BeautifulSoup(response.content, 'html.parser')
         paragraphs = soup.find_all('p')
         print("Paragraphs found:", paragraphs)  # Debugging line
@@ -85,7 +69,7 @@ def scrape_url(url):  # Replace with your target URL
             text = para.get_text(strip=True)
             if text:
                 result += text + "\n\n"
-        return result.strip()  
+        return result.strip()
     except requests.exceptions.RequestException as e:
         print(f"Error scraping {url}: {e}")
         return None
@@ -100,7 +84,7 @@ def fetch_url():
     data = request.get_json()
     invalid_urls = []
     citations = []
-    support_prob = 0.0  
+    support_prob = 0.0
     try:
         text = data.get('text')
         print("INPUT :",text)
@@ -115,12 +99,12 @@ def fetch_url():
             content_of_url = scrape_url(rurl)
             if content_of_url:
                 context_new += content_of_url + " "
-        
+
         print("\nNew Context:", context_new)
         factcheck_response = bl.minicheck.factcheck.create(claim=claim, context=context_new)
-        support_prob = float(factcheck_response.support_prob)  
+        support_prob = float(factcheck_response.support_prob)
 
-        citations = perform_source_search(claim)  
+        citations = perform_source_search(claim)
     except Exception as e:
         print("Error occurred:", str(e))
         return jsonify({'valid': False, 'message': 'An error occurred: ' + str(e)}), 500
@@ -128,7 +112,7 @@ def fetch_url():
     try:
         url_pattern = r"(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"
         parts = []
-        invalid_lines = [] 
+        invalid_lines = []
         last_index = 0
 
         for match in re.finditer(url_pattern, text):
@@ -137,43 +121,43 @@ def fetch_url():
             end = match.end()
             text_before_url = text[last_index:start].strip()
             parts.append({'text_before_url': text_before_url, 'url': url})
-        
+            last_index = end
+
         claim_lines = claim.splitlines()
-        
+
         for line in claim_lines:
             similarity_score = compute_similarity(line.strip(), context_new.strip())
             if similarity_score < 0.5:
                 invalid_lines.append({'line': line.strip(), 'similarity_score': float(similarity_score)})
-        
-            last_index = end
-        
+
+
         if last_index < len(text):
             text_after_url = text[last_index:].strip()
             parts.append({'text_before_url': text_after_url, 'url': None})
-        
+
         print(parts)
         for part in parts:
             if part['url'] is not None:
                 try:
                     response = requests.get(part['url'])
-                    content = response.text 
+                    content = response.text
                     contents = extract_content(content)
                     similarity_score = compute_similarity(part['text_before_url'], contents)
-                    if similarity_score > 0:
-                        invalid_urls.append({'url': part['url'], 'score': str(float(similarity_score))})
+                    validity_score = "Valid" if similarity_score > 0.6 else "Invalid"  # You can adjust the threshold
+                    invalid_urls.append({'url': part['url'], 'validity': validity_score})
                 except requests.exceptions.RequestException as e:
-                    invalid_urls.append({'url': part['url'], 'score': None})
+                    invalid_urls.append({'url': part['url'], 'validity': "Could not access"})
                     print(e)
 
         print(invalid_urls)
         return jsonify({
-            'valid': support_prob > 0.5,
+            'valid': support_prob > 0.,
             'support_prob': support_prob,
             'invalid_urls': invalid_urls,
             'citations': citations,
-            'invalid_lines': invalid_lines  
+            'invalid_lines': invalid_lines
         })
-        
+
     except requests.exceptions.RequestException as e:
         return {'invalid_urls': 'Failed', 'citation': citations}, 400
 

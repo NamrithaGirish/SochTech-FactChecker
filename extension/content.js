@@ -33,55 +33,64 @@ floatingBox.addEventListener('click', function(event) {
 // Function to update the box with selected text
 // Function to update the box with selected text
 async function updateSelectedText() {
-  let selectedText = window.getSelection().toString().trim();
-  if (selectedText) {
-      floatingBox.innerText = 'Validating...';
-      
-      // Fetch claim validation from the Flask API
-      const validationResult = await fetchClaimValidation(selectedText);
-      console.log(validationResult);
-      if (validationResult) {
-          let resultText = '';
-          const { valid, support_prob, invalid_urls, citations, invalid_lines } = validationResult;
+    let selectedText = window.getSelection().toString().trim();
+    if (selectedText) {
+        floatingBox.innerHTML = '<h2>Soch Facts</h2><p class="loading-text">Validating...</p>'; // Clear and show loading
 
-          // Display support probability
-          resultText += `Support Probability: ${(support_prob * 100).toFixed(2)}%\n\n`;
+        try {
+            const validationResult = await fetchClaimValidation(selectedText);
+            if (validationResult) {
+                let resultHTML = '<h2>Soch Facts</h2>';
+                const { valid, support_prob, invalid_urls, citations, invalid_lines } = validationResult;
 
-          // Process invalid URLs
-          if (invalid_urls && invalid_urls.length > 0) {
-              invalid_urls.forEach(({ url, score }) => {
-                  resultText += `${url} - ${score === null ? 'Invalid URL' : `Only ${(parseFloat(score) * 100).toFixed(2)}% related to context`}\n`;
-              });
-          } else {
-              resultText += 'No invalid URLs found.\n';
-          }
+                // Display support probability
+                resultHTML += `<p><strong>Support Probability:</strong> ${(support_prob * 100).toFixed(2)}%</p>`;
 
-          // Process citations
-          if (citations && citations.length > 0) {
-              resultText += `Citations:\n`;
-              citations.forEach(citation => {
-                  resultText += `${citation}\n`;
-              });
-          } else {
-              resultText += 'No citations found.\n';
-          }
+                // Process invalid URLs
+                if (invalid_urls && invalid_urls.length > 0) {
+                    resultHTML += '<p><strong>Invalid URLs:</strong></p><ul>';
+                    invalid_urls.forEach(({ url, score }) => {
+                        resultHTML += `<li><a href="${url}" target="_blank">${url}</a> - ${score === null ? 'Invalid URL' : `Only ${(parseFloat(score) * 100).toFixed(2)}% related to context`}</li>`;
+                    });
+                    resultHTML += '</ul>';
+                } else {
+                    resultHTML += '<p class="result-message">No invalid URLs found.</p>';
+                }
 
-          if (invalid_lines && invalid_lines.length > 0) {
-              resultText += `\nInvalid Lines:\n`;
-              invalid_lines.forEach(({ line, similarity_score }) => {
-                  resultText += `${line} - Similarity Score: ${(similarity_score * 100).toFixed(2)}%\n`;
-              });
-          } else {
-              resultText += 'No invalid lines found.\n';
-          }
+                // Process citations
+                if (citations && citations.length > 0) {
+                    resultHTML += '<p><strong>Citations:</strong></p><ul>';
+                    citations.forEach(citation => {
+                        resultHTML += `<li class="citation">${citation}</li>`;
+                    });
+                    resultHTML += '</ul>';
+                } else {
+                    resultHTML += '<p class="result-message">No citations found.</p>';
+                }
 
-          floatingBox.innerText = resultText;
-      } else {
-          floatingBox.innerText = 'No validation result received.';
-      }
-  } else {
-      floatingBox.innerText = 'Welcome To Soch Facts\n\nValidate AI thoughts here.....';
-  }
+                // Process invalid lines
+                if (invalid_lines && invalid_lines.length > 0) {
+                    resultHTML += '<p><strong>Invalid Lines:</strong></p><ul>';
+                    invalid_lines.forEach(({ line, similarity_score }) => {
+                        resultHTML += `<li class="invalid-line">${line} - Similarity Score: ${(similarity_score * 100).toFixed(2)}%</li>`;
+                    });
+                    resultHTML += '</ul>';
+                } else {
+                    resultHTML += '<p class="result-message">No invalid lines found.</p>';
+                }
+
+                floatingBox.innerHTML = resultHTML;
+            } else {
+                floatingBox.innerHTML = '<h2>Soch Facts</h2><p class="result-message">No validation result received.</p>';
+            }
+        } catch (error) {
+            console.error('Error during validation:', error);
+            floatingBox.innerHTML = '<h2>Soch Facts</h2><p class="result-message">Error validating text.</p>';
+        }
+
+    } else {
+        floatingBox.innerHTML = '<h2>Soch Facts</h2><p>Welcome To Soch Facts</p><p>Validate AI thoughts here.....</p>';
+    }
 }
 
 
